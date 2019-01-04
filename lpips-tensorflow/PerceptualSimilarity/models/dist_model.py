@@ -109,6 +109,13 @@ class DistModel(BaseModel):
         else:
             return self.net.forward(in1,in2)
 
+
+    def export_params_to_numpy(self):
+        params_numpy = []
+        for param in self.parameters:
+            params_numpy.append(param.data.numpy())
+        return params_numpy
+
     def forward(self, in0, in1, retNumpy=True):
         ''' Function computes the distance between image patches in0 and in1
         INPUTS
