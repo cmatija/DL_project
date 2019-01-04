@@ -25,7 +25,7 @@ from logger import Logger
 import sheets_logger
 import numpy as np
 from codec_distance import CodecDistance, CodecDistanceReadException
-
+from model_translator import model_translator
 import string
 import sys
 sys.path.insert(0, '/home/cmatija/code/python/DL_project/lpips-tensorflow')
@@ -69,7 +69,6 @@ def train(autoencoder_config_path, probclass_config_path,
     ae_config, ae_config_rel_path = config_parser.parse(autoencoder_config_path)
     pc_config, pc_config_rel_path = config_parser.parse(probclass_config_path)
     print_configs(('ae_config', ae_config), ('pc_config', pc_config))
-
     continue_in_ckpt_dir = restore_manager and restore_manager.continue_in_ckpt_dir
     if continue_in_ckpt_dir:
         logdir = restore_manager.log_dir
@@ -481,10 +480,30 @@ class Distortions(object):
                     tf.reduce_min(otp, axis=axis)
                 )
             )
-            permutation = [0, 2, 3, 1]
-            inp_normalized = tf.transpose(inp_normalized,permutation)
-            otp_normalized = tf.transpose(otp_normalized, permutation)
 
+
+            permutation = [0, 2, 3, 1]
+            inp_normalized = tf.transpose(inp_normalized, permutation)
+            otp_normalized = tf.transpose(otp_normalized, permutation)
+            # pad_val = (224-160)//2
+            # paddings = tf.constant([[0,0],[pad_val,pad_val],[pad_val,pad_val],[0,0]])
+            # ksizes = [1, 64, 64, 1]
+            # strides = [1, 32, 32, 1]
+            # rates = [1,1,1,1]
+            # padding = 'SAME'
+            # patches = tf.image.extract_image_patches(inp_normalized, ksizes, strides, rates, padding)
+            # patches_shape = tf.shape(patches)
+            # h = tf.shape(inp_normalized)[1]
+            # w = tf.shape(inp_normalized)[2]
+            # c = tf.shape(inp_normalized)[3]
+            # patches = tf.reshape(patches, [tf.reduce_prod(patches_shape[0:3]), h, w, int(c)])
+            # inp_normalized = tf.pad(inp_normalized, paddings, 'CONSTANT')
+            # otp_normalized = tf.pad(otp_normalized, paddings, 'CONSTANT')
+            translator = model_translator(inp_normalized[:, :64, :64, :], otp_normalized[:, :64, :64, :],
+                                          network='alexnet')
+
+            translator.get_weights()
+            # model_translator.get_alexnet_diff(inp_normalized[:,:64,:64,:], otp_normalized[:,:64,:64,:])
             # img_content_normalized = (inp - np.min(inp)) / (
             #         np.max(inp) - np.min(inp))
             # img_content_normalized = np.transpose(np.expand_dims(img_content_normalized, axis=0),
