@@ -4,7 +4,7 @@ from util import util
 from models import dist_model as dm
 from IPython import embed
 
-use_gpu = True         # Whether to use GPU
+use_gpu = False         # Whether to use GPU
 spatial = False         # Return a spatial map of perceptual distance.
                        # Optional args spatial_shape and spatial_order control output shape and resampling filter: see DistModel.initialize() for details.
 
@@ -13,7 +13,7 @@ model = dm.DistModel()
 
 # Linearly calibrated models
 #model.initialize(model='net-lin',net='squeeze',use_gpu=use_gpu,spatial=spatial)
-model.initialize(model='net-lin',net='alex',use_gpu=use_gpu,spatial=spatial)
+model.initialize(model='net',net='alex',use_gpu=use_gpu,spatial=spatial)
 #model.initialize(model='net-lin',net='vgg',use_gpu=use_gpu,spatial=spatial)
 
 # Off-the-shelf uncalibrated networks
