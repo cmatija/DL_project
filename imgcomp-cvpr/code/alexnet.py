@@ -104,6 +104,7 @@ def alexnet_v2(inputs,
             inputs = tf.pad(inputs, padding)
             net = slim.conv2d(inputs, 64, [11, 11], 4, padding='VALID',
                             scope='conv1')
+            ret1 = net
 
             #     nn.MaxPool2d(kernel_size=3, stride=2),
             net = slim.max_pool2d(net, [3, 3], 2, scope='pool1')
@@ -114,7 +115,7 @@ def alexnet_v2(inputs,
             padding = [[0, 0], [n_pad, n_pad], [n_pad, n_pad], [0, 0]]
             net = tf.pad(net, padding)
             net = slim.conv2d(net, 192, [5, 5], scope='conv2')
-
+            ret2 = net
             #     nn.MaxPool2d(kernel_size=3, stride=2),
             net = slim.max_pool2d(net, [3, 3], 2, scope='pool2')
 
@@ -124,14 +125,14 @@ def alexnet_v2(inputs,
             padding = [[0, 0], [n_pad, n_pad], [n_pad, n_pad], [0, 0]]
             net = tf.pad(net, padding)
             net = slim.conv2d(net, 384, [3, 3], scope='conv3')
-
+            ret3 = net
             #     nn.Conv2d(384, 256, kernel_size=3, padding=1),
             #     nn.ReLU(inplace=True),
             n_pad = 1
             padding = [[0, 0], [n_pad, n_pad], [n_pad, n_pad], [0, 0]]
             net = tf.pad(net, padding)
             net = slim.conv2d(net, 256, [3, 3], scope='conv4')
-
+            ret4 = net
             #     nn.Conv2d(256, 256, kernel_size=3, padding=1),
             #     nn.ReLU(inplace=True),
             n_pad = 1
@@ -140,25 +141,33 @@ def alexnet_v2(inputs,
             net = slim.conv2d(net, 256, [3, 3], scope='conv5')
             #     nn.MaxPool2d(kernel_size=3, stride=2),
             net = slim.max_pool2d(net, [3, 3], 2, scope='pool5')
-
+            ret5 = net
 
             # self.classifier = nn.Sequential(
             #     nn.Dropout(),
             net = slim.dropout(net,dropout_keep_prob, is_training=is_training,scope='dropout5')
-
+            rets = [ret1, ret2, ret3, ret4, ret5]
+            batch_size = ret1.shape[0].__int__()//2
+            losses = []
+            for i, ret in enumerate(rets):
+                inp = ret[:batch_size,...]
+                otp = ret[-batch_size:, ...]
+                losses.append(tf.losses.cosine_distance(tf.nn.l2_normalize(inp,axis=3), tf.nn.l2_normalize(otp, axis=3),
+                                                        axis=3, scope='cosine_distance'))
+            return tf.reduce_mean(tf.stack(losses))
 
             #     nn.Linear(256 * 6 * 6, 4096),
             #     nn.ReLU(inplace=True),
-            net = tf.reshape(net, [net.shape[0],tf.reduce_prod(net.shape[-3:])])
-            net = slim.fully_connected(net, 4096, scope='fcn6')
-
-            #     nn.Dropout(),
-            net = slim.dropout(net,dropout_keep_prob, is_training=is_training,scope='dropout6')
-            #     nn.Linear(4096, 4096),
-            #     nn.ReLU(inplace=True),
-            net = slim.fully_connected(net, 4096, scope='fcn7')
-            #     nn.Linear(4096, num_classes),
-            net = slim.fully_connected(net, num_classes, scope='fcn8')
+            # net = tf.reshape(net, [net.shape[0],tf.reduce_prod(net.shape[-3:])])
+            # net = slim.fully_connected(net, 4096, scope='fcn6')
+            #
+            # #     nn.Dropout(),
+            # net = slim.dropout(net,dropout_keep_prob, is_training=is_training,scope='dropout6')
+            # #     nn.Linear(4096, 4096),
+            # #     nn.ReLU(inplace=True),
+            # net = slim.fully_connected(net, 4096, scope='fcn7')
+            # #     nn.Linear(4096, num_classes),
+            # net = slim.fully_connected(net, num_classes, scope='fcn8')
             # )
             # Use conv2d instead of fully_connected layers.
             # with slim.arg_scope([slim.conv2d],
@@ -187,6 +196,6 @@ def alexnet_v2(inputs,
             #       if spatial_squeeze:
             #         net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
             #       end_points[sc.name + '/fc8'] = net
-            return net
+
 
     alexnet_v2.default_image_size = 224
