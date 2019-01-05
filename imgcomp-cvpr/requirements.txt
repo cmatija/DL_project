@@ -10,3 +10,9 @@ sklearn
 #tensorflow-tensorboard==0.4.0rc3
 fasteners
 fjcommon==0.1.69
+httplib2
+apiclient
+google-api-python-client
+oauth2client
+tensorflow
+tensorflow-tensorboard
