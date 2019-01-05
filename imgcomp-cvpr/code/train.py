@@ -184,7 +184,7 @@ def train(autoencoder_config_path, probclass_config_path,
     with tf_helpers.start_queues_in_sess(init_vars=restore_manager is None) as (sess, coord):
         train_logger.finalize_with_sess(sess)
         test_logger.finalize_with_sess(sess)
-        Distortions.set_session(sess)
+        # Distortions.set_session(sess)
         if restore_manager:
             restore_manager.restore(sess)
 
@@ -379,7 +379,7 @@ class Distortions(object):
                 Distortions.get_ms_ssim(x, x_out)
                 if should_get_ms_ssim else None)
             #OUR MODIFICATION
-            self.alexnet = (Distortions.get_alexnet(x, x_out)
+            self.alexnet = (Distortions.get_alexnet(x, x_out, is_training)
                             if should_get_alexnet and not should_get_vgg else None)
             self.vgg = (Distortions.get_vgg(x, x_out)
                         if should_get_vgg and not should_get_alexnet else None)
@@ -455,7 +455,7 @@ class Distortions(object):
             return ms_ssim.MultiScaleSSIM(inp, otp, data_format='NCHW', name='MS-SSIM')
 
     @staticmethod
-    def get_alexnet(inp, otp):
+    def get_alexnet(inp, otp, is_training):
         # https://stackoverflow.com/questions/38376478/changing-the-scale-of-a-tensor-in-tensorflow
         with tf.name_scope('perceptual_loss'):
             axis=None
@@ -499,10 +499,14 @@ class Distortions(object):
             # patches = tf.reshape(patches, [tf.reduce_prod(patches_shape[0:3]), h, w, int(c)])
             # inp_normalized = tf.pad(inp_normalized, paddings, 'CONSTANT')
             # otp_normalized = tf.pad(otp_normalized, paddings, 'CONSTANT')
+            if is_training:
+                suffix = 'training'
+            else:
+                suffix = 'testing'
             translator = model_translator(inp_normalized[:, :64, :64, :], otp_normalized[:, :64, :64, :],
-                                          network='alexnet')
+                                          network='alexnet', scope_suffix=suffix)
 
-            translator.get_weights()
+            return translator.net
             # model_translator.get_alexnet_diff(inp_normalized[:,:64,:64,:], otp_normalized[:,:64,:64,:])
             # img_content_normalized = (inp - np.min(inp)) / (
             #         np.max(inp) - np.min(inp))
@@ -514,8 +518,8 @@ class Distortions(object):
             # out_img_content_normalized = np.transpose(out_img_content_normalized,
             #                                           [0, 2, 3, 1])
 
-            distance_t = lpips_tf.lpips(inp_normalized, otp_normalized, model='net-lin', net='vgg', data_format='NCHW')
-            return distance_t
+            # distance_t = lpips_tf.lpips(inp_normalized, otp_normalized, model='net-lin', net='vgg', data_format='NCHW')
+            # return distance_t
 
             # return Distortions.sess.run(distance_t,
             #                 feed_dict={lpips_ph1: img_content_normalized, lpips_ph2: out_img_content_normalized})
