@@ -379,12 +379,13 @@ class Distortions(object):
                 Distortions.get_ms_ssim(x, x_out)
                 if should_get_ms_ssim else None)
             #OUR MODIFICATION
-            self.alexnet = (Distortions.get_alexnet(x, x_out, is_training)
-                            if should_get_alexnet and not should_get_vgg else None)
-            self.vgg = (Distortions.get_vgg(x, x_out)
-                        if should_get_vgg and not should_get_alexnet else None)
-            self.alexnet_vgg = (Distortions.get_alexnet_vgg(x, x_out, sess=self.sess)
-                        if should_get_vgg and should_get_alexnet else None)
+            self.perceptual = None
+            self.perceptual = (Distortions.get_perceptual(x, x_out, is_training, net='alexnet')
+                            if should_get_alexnet and not should_get_vgg and self.perceptual is None else None)
+            self.perceptual = (Distortions.get_perceptual(x, x_out, is_training, net='vgg')
+                        if should_get_vgg and not should_get_alexnet and self.perceptual is None else self.perceptual)
+            # self.alexnet_vgg = (Distortions.get_alexnet_vgg(x, x_out, sess=self.sess)
+            #             if should_get_vgg and should_get_alexnet else None)
             with tf.name_scope('distortion_to_minimize'):
                 self.d_loss_scaled = self._get_distortion_to_minimize(minimize_for)
 
@@ -408,8 +409,8 @@ class Distortions(object):
         if minimize_for == 'ms_ssim':
             return self.config.K_ms_ssim * (1 - self.ms_ssim)
         #OUR MODIFICATION
-        if minimize_for == 'alexnet':
-            return self.alexnet
+        if minimize_for in ['alexnet', 'vgg', 'alexnet_vgg']:
+            return self.perceptual
         if minimize_for == 'vgg':
             return 0
         if minimize_for == 'alexnet_vgg':
@@ -455,7 +456,7 @@ class Distortions(object):
             return ms_ssim.MultiScaleSSIM(inp, otp, data_format='NCHW', name='MS-SSIM')
 
     @staticmethod
-    def get_alexnet(inp, otp, is_training):
+    def get_perceptual(inp, otp, is_training, net='alexnet', mode='net'):
         # https://stackoverflow.com/questions/38376478/changing-the-scale-of-a-tensor-in-tensorflow
         with tf.name_scope('perceptual_loss'):
             axis=None
@@ -504,8 +505,9 @@ class Distortions(object):
             else:
                 suffix = 'testing'
             translator = model_translator(inp_normalized[:, :64, :64, :], otp_normalized[:, :64, :64, :],
-                                          network='alexnet', scope_suffix=suffix)
-
+                                          network=net, scope_suffix=suffix)
+            Distortions.weights_original = translator.weights_original
+            Distortions.weights_transposed = translator.weights_transposed
             return translator.net
             # model_translator.get_alexnet_diff(inp_normalized[:,:64,:64,:], otp_normalized[:,:64,:64,:])
             # img_content_normalized = (inp - np.min(inp)) / (
