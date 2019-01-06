@@ -13,7 +13,7 @@ train_probclass = True
 arch = 'TwoLayerNet'
 
 constrain distortion_to_minimize :: mse, psnr, ms_ssim, alexnet, vgg
-distortion_to_minimize = alexnet
+distortion_to_minimize = vgg
 K_psnr = 100
 K_ms_ssim = 5000
 
