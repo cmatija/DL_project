@@ -45,7 +45,6 @@ trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
 def alexnet_v2_arg_scope(weight_decay=0.0005):
   with slim.arg_scope([slim.conv2d, slim.fully_connected],
                       activation_fn=tf.nn.relu,
-                      biases_initializer=tf.constant_initializer(0.1),
                       weights_regularizer=slim.l2_regularizer(weight_decay)):
     with slim.arg_scope([slim.conv2d], padding='SAME'):
       with slim.arg_scope([slim.max_pool2d], padding='SAME') as arg_sc:
@@ -53,6 +52,7 @@ def alexnet_v2_arg_scope(weight_decay=0.0005):
 
 
 def alexnet_v2(inputs,
+               weights,
                num_classes=1000,
                is_training=True,
                dropout_keep_prob=0.5,
@@ -103,7 +103,8 @@ def alexnet_v2(inputs,
             padding = [[0, 0], [n_pad, n_pad], [n_pad, n_pad], [0, 0]]
             inputs = tf.pad(inputs, padding)
             net = slim.conv2d(inputs, 64, [11, 11], 4, padding='VALID',
-                            scope='conv1')
+                            scope='conv1', weights_initializer=tf.constant_initializer(weights[0]),
+                        biases_initializer= tf.constant_initializer(weights[1]), trainable=False)
             ret1 = net
 
             #     nn.MaxPool2d(kernel_size=3, stride=2),
@@ -114,7 +115,8 @@ def alexnet_v2(inputs,
             n_pad = 2
             padding = [[0, 0], [n_pad, n_pad], [n_pad, n_pad], [0, 0]]
             net = tf.pad(net, padding)
-            net = slim.conv2d(net, 192, [5, 5], scope='conv2')
+            net = slim.conv2d(net, 192, [5, 5], scope='conv2', weights_initializer=tf.constant_initializer(weights[2]),
+                        biases_initializer= tf.constant_initializer(weights[3]), trainable=False)
             ret2 = net
             #     nn.MaxPool2d(kernel_size=3, stride=2),
             net = slim.max_pool2d(net, [3, 3], 2, scope='pool2')
@@ -124,37 +126,33 @@ def alexnet_v2(inputs,
             n_pad = 1
             padding = [[0, 0], [n_pad, n_pad], [n_pad, n_pad], [0, 0]]
             net = tf.pad(net, padding)
-            net = slim.conv2d(net, 384, [3, 3], scope='conv3')
+            net = slim.conv2d(net, 384, [3, 3], scope='conv3', weights_initializer=tf.constant_initializer(weights[4]),
+                        biases_initializer= tf.constant_initializer(weights[5]), trainable=False)
             ret3 = net
             #     nn.Conv2d(384, 256, kernel_size=3, padding=1),
             #     nn.ReLU(inplace=True),
             n_pad = 1
             padding = [[0, 0], [n_pad, n_pad], [n_pad, n_pad], [0, 0]]
             net = tf.pad(net, padding)
-            net = slim.conv2d(net, 256, [3, 3], scope='conv4')
+            net = slim.conv2d(net, 256, [3, 3], scope='conv4', weights_initializer=tf.constant_initializer(weights[6]),
+                        biases_initializer= tf.constant_initializer(weights[7]), trainable=False)
             ret4 = net
             #     nn.Conv2d(256, 256, kernel_size=3, padding=1),
             #     nn.ReLU(inplace=True),
             n_pad = 1
             padding = [[0, 0], [n_pad, n_pad], [n_pad, n_pad], [0, 0]]
             net = tf.pad(net, padding)
-            net = slim.conv2d(net, 256, [3, 3], scope='conv5')
+            net = slim.conv2d(net, 256, [3, 3], scope='conv5', weights_initializer=tf.constant_initializer(weights[8]),
+                        biases_initializer= tf.constant_initializer(weights[9]), trainable=False)
             #     nn.MaxPool2d(kernel_size=3, stride=2),
             net = slim.max_pool2d(net, [3, 3], 2, scope='pool5')
             ret5 = net
 
             # self.classifier = nn.Sequential(
             #     nn.Dropout(),
-            net = slim.dropout(net,dropout_keep_prob, is_training=is_training,scope='dropout5')
+            # net = slim.dropout(net,dropout_keep_prob, is_training=is_training,scope='dropout5')
             rets = [ret1, ret2, ret3, ret4, ret5]
-            batch_size = ret1.shape[0].__int__()//2
-            losses = []
-            for i, ret in enumerate(rets):
-                inp = ret[:batch_size,...]
-                otp = ret[-batch_size:, ...]
-                losses.append(tf.losses.cosine_distance(tf.nn.l2_normalize(inp,axis=3), tf.nn.l2_normalize(otp, axis=3),
-                                                        axis=3, scope='cosine_distance'))
-            return tf.reduce_mean(tf.stack(losses))
+            return rets
 
             #     nn.Linear(256 * 6 * 6, 4096),
             #     nn.ReLU(inplace=True),
