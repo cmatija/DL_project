@@ -364,7 +364,7 @@ class Distortions(object):
         with tf.name_scope('distortions_train' if is_training else 'distortions_test'):
             minimize_for = config.distortion_to_minimize
             #OUR MODIFICATION
-            assert minimize_for in ('mse', 'psnr', 'ms_ssim', 'alexnet', 'vgg', 'alex_vgg', 'alex')
+            assert minimize_for in ('mse', 'psnr', 'ms_ssim', 'alexnet', 'vgg', 'alex_vgg', 'alex', 'alexnet_vgg')
             # don't calculate MS-SSIM if not necessary to speed things up
             should_get_ms_ssim = minimize_for == 'ms_ssim'
             #OUR MODIFICATION
@@ -384,10 +384,9 @@ class Distortions(object):
                 if should_get_ms_ssim else None)
             #OUR MODIFICATION
             self.perceptual = None
-            self.perceptual = (Distortions.get_perceptual(x, x_out, is_training, net='alexnet')
-                            if should_get_alexnet and not should_get_vgg and self.perceptual is None else None)
-            self.perceptual = (Distortions.get_perceptual(x, x_out, is_training, net='vgg')
-                        if should_get_vgg and not should_get_alexnet and self.perceptual is None else self.perceptual)
+            self.perceptual = (Distortions.get_perceptual(x, x_out, is_training, net=minimize_for)
+                            if should_get_alexnet or should_get_vgg  else None)
+
             # self.alexnet_vgg = (Distortions.get_alexnet_vgg(x, x_out, sess=self.sess)
             #             if should_get_vgg and should_get_alexnet else None)
             with tf.name_scope('distortion_to_minimize'):
@@ -415,7 +414,7 @@ class Distortions(object):
             return self.config.K_ms_ssim * (1 - self.ms_ssim)
         #OUR MODIFICATION
         if minimize_for in ['alexnet', 'vgg', 'alexnet_vgg']:
-            return self.perceptual
+            return self.config.K_perceptual * self.perceptual
         raise ValueError('Invalid: {}'.format(minimize_for))
 
     @staticmethod
