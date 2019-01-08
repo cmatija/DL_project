@@ -3,7 +3,7 @@ import tensorflow as tf
 from fjcommon import tf_helpers
 from fjcommon import config_parser
 from fjcommon import functools_ext
-from own_utils import get_img_patch_grid
+from own_utils import get_img_patch_grid, prepare_imgs_for_lpips
 import time
 import os
 import subprocess
@@ -459,38 +459,15 @@ class Distortions(object):
     def get_perceptual(inp, otp, is_training, net='alexnet', mode='net'):
         # https://stackoverflow.com/questions/38376478/changing-the-scale-of-a-tensor-in-tensorflow
         with tf.name_scope('perceptual_loss'):
-            axis=None
-            inp_normalized = tf.div(
-                tf.subtract(
-                    inp,
-                    tf.reduce_min(inp, axis=axis)
-                ),
-                tf.subtract(
-                    tf.reduce_max(inp, axis=axis),
-                    tf.reduce_min(inp, axis=axis)
-                )
-            )
-
-            otp_normalized = tf.div(
-                tf.subtract(
-                    otp,
-                    tf.reduce_min(otp, axis=axis)
-                ),
-                tf.subtract(
-                    tf.reduce_max(otp, axis=axis),
-                    tf.reduce_min(otp, axis=axis)
-                )
-            )
+            inp_normalized = prepare_imgs_for_lpips(inp, None, datatype='NCHW')
+            otp_normalized = prepare_imgs_for_lpips(otp, None, datatype='NCHW')
 
 
-            permutation = [0, 2, 3, 1]
-            inp_normalized = tf.transpose(inp_normalized, permutation)
-
-            otp_normalized = tf.transpose(otp_normalized, permutation)
             if is_training:
                 suffix = 'training'
             else:
                 suffix = 'testing'
+
             ksizes = [1, 64, 64, 1]
             strides = [1, 64, 64, 1]
             rates = [1, 1, 1, 1]
