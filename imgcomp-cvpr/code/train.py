@@ -3,7 +3,7 @@ import tensorflow as tf
 from fjcommon import tf_helpers
 from fjcommon import config_parser
 from fjcommon import functools_ext
-
+from own_utils import get_img_patch_grid
 import time
 import os
 import subprocess
@@ -28,7 +28,7 @@ from codec_distance import CodecDistance, CodecDistanceReadException
 from model_translator import model_translator
 import string
 import sys
-sys.path.insert(0, '/home/cmatija/code/python/DL_project/lpips-tensorflow')
+sys.path.insert(0, '/home/cmatija/code/python/DL_project_github/lpips-tensorflow')
 import lpips_tf
 
 # Enable TF logging output
@@ -158,7 +158,9 @@ def train(autoencoder_config_path, probclass_config_path,
         tf.summary.scalar('train/AE_loss/{}'.format(name), comp) for name, comp in ae_comps])
     train_logger.add_summaries([tf.summary.scalar('train/bpp', bpp_train)])
     train_logger.add_console_tensor('loss={:.3f}', total_loss)
-    train_logger.add_console_tensor('ms_ssim={:.3f}', d_train.ms_ssim)
+
+    if d_train.ms_ssim is not None:
+         train_logger.add_console_tensor('ms_ssim={:.3f}', d_train.ms_ssim)
     train_logger.add_console_tensor('bpp={:.3f}', bpp_train)
     train_logger.add_console_tensor('H_real={:.3f}', H_real)
 
@@ -172,7 +174,8 @@ def train(autoencoder_config_path, probclass_config_path,
         test_logger.add_summaries([
             tf.summary.image('test/hm', prep_for_grayscale_image_summary(heatmap2D, n=3, autoscale=True, name='hm'))])
 
-    test_logger.add_console_tensor('ms_ssim={:.3f}', d_test.ms_ssim)
+    if d_test.ms_ssim is not None:
+        test_logger.add_console_tensor('ms_ssim={:.3f}', d_test.ms_ssim)
     test_logger.add_console_tensor('bpp={:.3f}', bpp_test)
     test_logger.add_summaries([
         tf.summary.histogram('centers', ae.get_centers_variable()),
@@ -251,6 +254,7 @@ def train_loop(
             fw.add_run_metadata(run_metadata, str(itr), itr)
             print('Done')
         else:
+
             _, itr = sess.run([train_op, global_step])
 
         # Train Logging --
@@ -360,11 +364,11 @@ class Distortions(object):
         with tf.name_scope('distortions_train' if is_training else 'distortions_test'):
             minimize_for = config.distortion_to_minimize
             #OUR MODIFICATION
-            assert minimize_for in ('mse', 'psnr', 'ms_ssim', 'alexnet', 'vgg', 'alexnet_vgg')
+            assert minimize_for in ('mse', 'psnr', 'ms_ssim', 'alexnet', 'vgg', 'alex_vgg', 'alex')
             # don't calculate MS-SSIM if not necessary to speed things up
             should_get_ms_ssim = minimize_for == 'ms_ssim'
             #OUR MODIFICATION
-            should_get_alexnet = ('alexnet' in minimize_for)
+            should_get_alexnet = ('alex' in minimize_for)
             should_get_vgg = ('vgg' in minimize_for)
             # if we don't minimize for PSNR, cast x and x_out to int before calculating the PSNR, because otherwise
             # PSNR is off. If not training, always cast to int, because we don't need the gradients.
@@ -397,7 +401,8 @@ class Distortions(object):
         return tf_helpers.list_without_None(
             tf.summary.scalar(prefix + '/mse', self.mse),
             tf.summary.scalar(prefix + '/psnr', self.psnr),
-            tf.summary.scalar(prefix + '/ms_ssim', self.ms_ssim) if self.ms_ssim is not None else None)
+            tf.summary.scalar(prefix + '/ms_ssim', self.ms_ssim) if self.ms_ssim is not None else None,
+            tf.summary.scalar(prefix + '/perceptual', self.perceptual) if self.perceptual is not None else None)
 
     def _get_distortion_to_minimize(self, minimize_for):
         """ Returns a float32 that should be minimized in training. For PSNR and MS-SSIM, which increase for a
@@ -411,11 +416,6 @@ class Distortions(object):
         #OUR MODIFICATION
         if minimize_for in ['alexnet', 'vgg', 'alexnet_vgg']:
             return self.perceptual
-        if minimize_for == 'vgg':
-            return 0
-        if minimize_for == 'alexnet_vgg':
-            return 0
-
         raise ValueError('Invalid: {}'.format(minimize_for))
 
     @staticmethod
@@ -485,49 +485,23 @@ class Distortions(object):
 
             permutation = [0, 2, 3, 1]
             inp_normalized = tf.transpose(inp_normalized, permutation)
+
             otp_normalized = tf.transpose(otp_normalized, permutation)
-            # pad_val = (224-160)//2
-            # paddings = tf.constant([[0,0],[pad_val,pad_val],[pad_val,pad_val],[0,0]])
-            # ksizes = [1, 64, 64, 1]
-            # strides = [1, 32, 32, 1]
-            # rates = [1,1,1,1]
-            # padding = 'SAME'
-            # patches = tf.image.extract_image_patches(inp_normalized, ksizes, strides, rates, padding)
-            # patches_shape = tf.shape(patches)
-            # h = tf.shape(inp_normalized)[1]
-            # w = tf.shape(inp_normalized)[2]
-            # c = tf.shape(inp_normalized)[3]
-            # patches = tf.reshape(patches, [tf.reduce_prod(patches_shape[0:3]), h, w, int(c)])
-            # inp_normalized = tf.pad(inp_normalized, paddings, 'CONSTANT')
-            # otp_normalized = tf.pad(otp_normalized, paddings, 'CONSTANT')
             if is_training:
                 suffix = 'training'
             else:
                 suffix = 'testing'
-            translator = model_translator(inp_normalized[:, :64, :64, :], otp_normalized[:, :64, :64, :],
+            ksizes = [1, 64, 64, 1]
+            strides = [1, 64, 64, 1]
+            rates = [1, 1, 1, 1]
+            padding = 'SAME'
+            patches_inp = get_img_patch_grid(inp_normalized, ksizes, strides, rates, padding)
+            patches_otp = get_img_patch_grid(otp_normalized, ksizes, strides, rates, padding)
+            translator = model_translator(patches_inp, patches_otp,
                                           network=net, scope_suffix=suffix)
             Distortions.weights_original = translator.weights_original
             Distortions.weights_transposed = translator.weights_transposed
             return translator.net
-            # model_translator.get_alexnet_diff(inp_normalized[:,:64,:64,:], otp_normalized[:,:64,:64,:])
-            # img_content_normalized = (inp - np.min(inp)) / (
-            #         np.max(inp) - np.min(inp))
-            # img_content_normalized = np.transpose(np.expand_dims(img_content_normalized, axis=0),
-            #                                       [0, 2, 3, 1])
-            # out_img_content_normalized = (otp - np.min(otp)) / (
-            #         np.max(otp) - np.min(otp))
-            # print(out_img_content_normalized.shape)
-            # out_img_content_normalized = np.transpose(out_img_content_normalized,
-            #                                           [0, 2, 3, 1])
-
-            # distance_t = lpips_tf.lpips(inp_normalized, otp_normalized, model='net-lin', net='vgg', data_format='NCHW')
-            # return distance_t
-
-            # return Distortions.sess.run(distance_t,
-            #                 feed_dict={lpips_ph1: img_content_normalized, lpips_ph2: out_img_content_normalized})
-
-
-
 
     @staticmethod
     def get_vgg(inp, otp, sess=None):
@@ -583,8 +557,8 @@ def main():
     p.add_argument('--dataset_codec_distance', '-dcodec', default='testset', help='See codec_distance.py')
     p.add_argument('--log_dir_root', '-o', default='logs', metavar='LOG_DIR_ROOT')
     p.add_argument('--log_interval_train', '-ltrain', type=int, default=100)
-    p.add_argument('--log_interval_save', '-lsave', type=int, default=1000)
-    p.add_argument('--log_interval_test', '-ltest', type=int, default=1000,
+    p.add_argument('--log_interval_save', '-lsave', type=int, default=500)
+    p.add_argument('--log_interval_test', '-ltest', type=int, default=500,
                    help='Set to -1 to skip testing, which saves memory.')
     p.add_argument('--log_run_metadata', '-lmeta', action='store_const', const=True)
     # TODO: rm
