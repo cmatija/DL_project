@@ -22,6 +22,7 @@ regularization_factor_centers = 0.1
 
 crop_size = (160, 160)
 
+
 # Learning Rate and Schedule Config ---
 
 lr_initial = 8e-5

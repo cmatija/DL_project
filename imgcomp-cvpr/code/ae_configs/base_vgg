@@ -23,7 +23,7 @@ regularization_factor_centers = 0.1
 H_target = None
 
 crop_size = (128, 128)  # training and testing crop size
-batch_size = 10
+batch_size = 30
 
 # Learning Rate and Schedule Config ---
 

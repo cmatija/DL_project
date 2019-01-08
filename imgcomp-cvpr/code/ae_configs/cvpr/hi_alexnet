@@ -1,6 +1,7 @@
 use base_alexnet
 
 distortion_to_minimize = alexnet
-num_chan_bn = 32
-H_target = 2*0.6  # == 64/C * bpp
+num_chan_bn = 64
+H_target = 1.0  # == 64/C * bpp
+
 

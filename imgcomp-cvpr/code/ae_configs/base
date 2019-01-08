@@ -12,7 +12,7 @@ train_probclass = True
 
 arch = 'TwoLayerNet'
 
-constrain distortion_to_minimize :: mse, psnr, ms_ssim
+constrain distortion_to_minimize :: mse, psnr, ms_ssim, alexnet, vgg
 distortion_to_minimize = mse
 K_psnr = 100
 K_ms_ssim = 5000
@@ -40,4 +40,4 @@ lr_schedule_decay_interval = 2  # num epochs before decay
 lr_schedule_decay_rate = 0.1
 lr_schedule_decay_staircase = True
 
-arch_param_B = 3
+arch_param_B = 10

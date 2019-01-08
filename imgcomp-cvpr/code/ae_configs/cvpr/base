@@ -28,5 +28,5 @@ lr_schedule = DECAY
 lr_schedule_decay_interval = 2  # num epochs before decay
 lr_schedule_decay_rate = 0.1
 
-arch_param_B = 5
+arch_param_B = 10
 
