@@ -14,38 +14,50 @@ class model_translator:
         self.shift = tf.reshape(tf.constant([-.030, -.088, -.188]), [1, 1, 1, 3])
         self.scale = tf.reshape(tf.constant([.458, .448, .450]), [1, 1, 1, 3])
         network_input = tf.div(tf.concat([input1, input2], 0)-self.shift, self.scale)
-
+        self.weights_transposed = {}
+        self.weights_original = {}
         self.get_weights()
+        losses = []
         if not scope_suffix == '':
             scope_suffix = '_' + scope_suffix
-        if network == 'alexnet' or network == 'alex':
+        if 'alexnet' in network or 'alex' in network:
             with self.slim.arg_scope(alexnet.alexnet_v2_arg_scope()):
-                rets = alexnet.alexnet_v2(network_input, self.weights_transposed,
+                rets_alex = alexnet.alexnet_v2(network_input, self.weights_transposed['alexnet'],
                                           scope='alexnet_v2'+scope_suffix)
-        elif network == 'vgg':
+                loss_alex = self.get_diff(rets_alex)
+                losses += [loss_alex]
+
+        if 'vgg' in network:
             with self.slim.arg_scope(vgg.vgg_arg_scope()):
-                rets = vgg.vgg_16(network_input, self.weights_transposed,scope='vgg_v2' + scope_suffix)
-        self.net = self.get_diff(rets)
+                rets_vgg = vgg.vgg_16(network_input, self.weights_transposed['vgg'], scope='vgg_v2' + scope_suffix)
+                loss_vgg = self.get_diff(rets_vgg)
+                losses += [loss_vgg]
+        else:
+            loss_vgg = None
+
+        self.net = tf.reduce_sum(tf.stack(losses))
 
     def get_weights(self):
 
-        if self.network == 'alexnet' and not self.mode=='net-lin':
-            fpath = '/home/cmatija/code/python/DL_project_github/models/alex_net.pickle'
-        elif self.network == 'vgg' and not self.mode=='net-lin':
-            fpath = '/home/cmatija/code/python/DL_project_github/models/vgg_net.pickle'
-        pickle_in = open(fpath, "rb")
-        self.weights_original = pickle.load(pickle_in)
+        possible_networks = ['alexnet', 'vgg']
 
-        weights_transposed = []
-        permutation = [2,3,1,0]
-        for weights in self.weights_original:
-            #NCHW to NHWC
-            if len(weights.shape)==4:
-                weights_transposed.append(np.transpose(weights, permutation))
-            else:
-                weights_transposed.append(weights)
+        for possible_network in possible_networks:
+            if possible_network in self.network:
+                fpath = '/home/cmatija/code/python/DL_project_github/models/' + possible_network + '_'+self.mode +\
+                        '.pickle'
+                pickle_in = open(fpath, "rb")
+                self.weights_original[possible_network] = pickle.load(pickle_in)
 
-        self.weights_transposed = weights_transposed
+                weights_transposed = []
+                permutation = [2, 3, 1, 0]
+                for weights in self.weights_original[possible_network]:
+                    # NCHW to NHWC
+                    if len(weights.shape) == 4:
+                        weights_transposed.append(np.transpose(weights, permutation))
+                    else:
+                        weights_transposed.append(weights)
+
+                self.weights_transposed[possible_network] = weights_transposed
 
     def get_diff(self, rets):
         batch_size = rets[0].shape[0].__int__() // 2
