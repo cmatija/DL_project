@@ -10,16 +10,21 @@ class model_translator:
         self.slim = tf.contrib.slim
         self.network = network
         self.mode = mode
+        #directly taken from torch script
+        self.shift = tf.reshape(tf.constant([-.030, -.088, -.188]), [1, 1, 1, 3])
+        self.scale = tf.reshape(tf.constant([.458, .448, .450]), [1, 1, 1, 3])
+        network_input = tf.div(tf.concat([input1, input2], 0)-self.shift, self.scale)
+
         self.get_weights()
         if not scope_suffix == '':
             scope_suffix = '_' + scope_suffix
         if network == 'alexnet' or network == 'alex':
             with self.slim.arg_scope(alexnet.alexnet_v2_arg_scope()):
-                rets = alexnet.alexnet_v2(tf.concat([input1, input2], 0), self.weights_transposed,
+                rets = alexnet.alexnet_v2(network_input, self.weights_transposed,
                                           scope='alexnet_v2'+scope_suffix)
         elif network == 'vgg':
             with self.slim.arg_scope(vgg.vgg_arg_scope()):
-                rets = vgg.vgg_16(tf.concat([input1, input2], 0), self.weights_transposed,scope='vgg_v2' + scope_suffix)
+                rets = vgg.vgg_16(network_input, self.weights_transposed,scope='vgg_v2' + scope_suffix)
         self.net = self.get_diff(rets)
 
     def get_weights(self):
@@ -44,13 +49,18 @@ class model_translator:
 
     def get_diff(self, rets):
         batch_size = rets[0].shape[0].__int__() // 2
-        losses = []
         for i, ret in enumerate(rets):
             inp = ret[:batch_size, ...]
             otp = ret[-batch_size:, ...]
-            losses.append(tf.losses.cosine_distance(tf.nn.l2_normalize(inp, axis=3), tf.nn.l2_normalize(otp, axis=3),
-                                                    axis=3, scope='cosine_distance'))
-        return tf.reduce_mean(tf.stack(losses))
+            if i == 0:
+                computed_loss = tf.losses.cosine_distance(tf.nn.l2_normalize(inp, axis=3),
+                                                          tf.nn.l2_normalize(otp, axis=3), axis=3,
+                                                          scope='cosine_distance')
+            else:
+                computed_loss += tf.losses.cosine_distance(tf.nn.l2_normalize(inp, axis=3),
+                                                           tf.nn.l2_normalize(otp, axis=3), axis=3,
+                                                           scope='cosine_distance')
+        return computed_loss
 
     def get_alexnet_diff(self):
         a=2
