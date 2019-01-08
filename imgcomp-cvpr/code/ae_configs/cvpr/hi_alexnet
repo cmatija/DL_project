@@ -1,4 +1,4 @@
-use base_alexnet
+use base
 
 distortion_to_minimize = alexnet
 num_chan_bn = 64
