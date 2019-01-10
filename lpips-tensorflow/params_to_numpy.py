@@ -9,8 +9,8 @@ spatial = False         # Return a spatial map of perceptual distance.
 
 ## Initializing the model
 model = dm.DistModel()
-model_type = 'net'
-model_network = 'vgg'
+model_type = 'net-lin'
+model_network = 'alex'
 
 print('used network: ' + model_network + ', type: '+model_type)
 # Linearly calibrated models
@@ -24,7 +24,7 @@ print('Model [%s] initialized'%model.name())
 
 params_numpy = model.export_params_to_numpy()
 model_path = '/home/cmatija/code/python/DL_project_github/models/'
-model_name = model_network + '_' + model_type
+model_name = ('alexnet' if model_network=='alex' else model_network) + '_' + model_type
 pickle_out = open(model_path+model_name+'.pickle', "wb+")
 pickle.dump(params_numpy, pickle_out)
 pickle_out.close()
