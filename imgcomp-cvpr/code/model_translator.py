@@ -3,39 +3,61 @@ import tensorflow as tf
 import alexnet
 import numpy as np
 import vgg
+from own_utils import prepare_imgs_for_lpips, get_img_patch_grid
+import sys
 
+sys.path.insert(0, '/home/cmatija/code/python/DL_project_github/lpips-tensorflow')
+import lpips_tf
 class model_translator:
 
-    def __init__(self, input1, input2, network='alexnet', mode='net', scope_suffix=''):
+    def __init__(self, input1, input2, network='alexnet', mode='net', scope_suffix='', datatype = 'NHWC', use_own=True):
         self.slim = tf.contrib.slim
         self.network = network
         self.mode = mode
         #directly taken from torch script
         self.shift = tf.reshape(tf.constant([-.030, -.088, -.188]), [1, 1, 1, 3])
         self.scale = tf.reshape(tf.constant([.458, .448, .450]), [1, 1, 1, 3])
-        network_input = tf.div(tf.concat([input1, input2], 0)-self.shift, self.scale)
+
         self.weights_transposed = {}
         self.weights_original = {}
-        self.get_weights()
+
         losses = []
-        if not scope_suffix == '':
-            scope_suffix = '_' + scope_suffix
-        if 'alexnet' in network or 'alex' in network:
-            with self.slim.arg_scope(alexnet.alexnet_v2_arg_scope()):
-                rets_alex = alexnet.alexnet_v2(network_input, self.weights_transposed['alexnet'],
-                                          scope='alexnet_v2'+scope_suffix)
-                loss_alex = self.get_diff(rets_alex)
-                losses += [loss_alex]
+        inp_normalized = prepare_imgs_for_lpips(input1, None, datatype=datatype)
+        otp_normalized = prepare_imgs_for_lpips(input2, None, datatype=datatype)
+        ksizes = [1, 64, 64, 1]
+        strides = [1, 64, 64, 1]
+        rates = [1, 1, 1, 1]
+        padding = 'SAME'
+        patches_inp = get_img_patch_grid(inp_normalized, ksizes, strides, rates, padding)
+        patches_otp = get_img_patch_grid(otp_normalized, ksizes, strides, rates, padding)
 
-        if 'vgg' in network:
-            with self.slim.arg_scope(vgg.vgg_arg_scope()):
-                rets_vgg = vgg.vgg_16(network_input, self.weights_transposed['vgg'], scope='vgg_v2' + scope_suffix)
-                loss_vgg = self.get_diff(rets_vgg)
-                losses += [loss_vgg]
+        if use_own:
+            self.get_weights()
+            network_input = tf.div(tf.concat([patches_inp, patches_otp], 0) - self.shift, self.scale)
+            if not scope_suffix == '':
+                scope_suffix = '_' + scope_suffix
+            if 'alexnet' in network or 'alex' in network:
+                with self.slim.arg_scope(alexnet.alexnet_v2_arg_scope()):
+                    rets_alex = alexnet.alexnet_v2(network_input, self.weights_transposed['alexnet'],
+                                              scope='alexnet_v2'+scope_suffix)
+                    loss_alex = self.get_diff(rets_alex)
+                    losses += [loss_alex]
+
+            if 'vgg' in network:
+                with self.slim.arg_scope(vgg.vgg_arg_scope()):
+                    rets_vgg = vgg.vgg_16(network_input, self.weights_transposed['vgg'], scope='vgg_v2' + scope_suffix)
+                    loss_vgg = self.get_diff(rets_vgg)
+                    losses += [loss_vgg]
+            else:
+                loss_vgg = None
+
+            self.net = tf.reduce_sum(tf.stack(losses))
         else:
-            loss_vgg = None
-
-        self.net = tf.reduce_sum(tf.stack(losses))
+            if network == 'alexnet':
+                lpips_network = 'alex'
+            else:
+                lpips_network = network
+            self.net = lpips_tf.lpips(patches_inp, patches_otp, model=mode, net=lpips_network)
 
     def get_weights(self):
 
