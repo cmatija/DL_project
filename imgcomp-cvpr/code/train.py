@@ -458,8 +458,6 @@ class Distortions(object):
     def get_perceptual(inp, otp, is_training, net='alexnet', mode='net'):
         # https://stackoverflow.com/questions/38376478/changing-the-scale-of-a-tensor-in-tensorflow
         with tf.name_scope('perceptual_loss'):
-            inp_normalized = prepare_imgs_for_lpips(inp, None, datatype='NCHW')
-            otp_normalized = prepare_imgs_for_lpips(otp, None, datatype='NCHW')
 
 
             if is_training:
@@ -467,14 +465,9 @@ class Distortions(object):
             else:
                 suffix = 'testing'
 
-            ksizes = [1, 64, 64, 1]
-            strides = [1, 64, 64, 1]
-            rates = [1, 1, 1, 1]
-            padding = 'SAME'
-            patches_inp = get_img_patch_grid(inp_normalized, ksizes, strides, rates, padding)
-            patches_otp = get_img_patch_grid(otp_normalized, ksizes, strides, rates, padding)
-            translator = model_translator(patches_inp, patches_otp,
-                                          network=net, scope_suffix=suffix)
+
+            translator = model_translator(inp, otp,
+                                          network=net, scope_suffix=suffix, datatype='NCHW')
             Distortions.weights_original = translator.weights_original
             Distortions.weights_transposed = translator.weights_transposed
             return translator.net
