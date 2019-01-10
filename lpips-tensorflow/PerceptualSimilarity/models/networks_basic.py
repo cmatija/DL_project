@@ -163,7 +163,6 @@ class PNetLin(nn.Module):
                 lin_models.extend([self.lin5, self.lin6])
             res = [lin_models[kk].model(diffs[kk]) for kk in range(len(diffs))]
             return res
-			
         val = torch.mean(torch.mean(self.lin0.model(diffs[0]),dim=3),dim=2)
         val = val + torch.mean(torch.mean(self.lin1.model(diffs[1]),dim=3),dim=2)
         val = val + torch.mean(torch.mean(self.lin2.model(diffs[2]),dim=3),dim=2)
