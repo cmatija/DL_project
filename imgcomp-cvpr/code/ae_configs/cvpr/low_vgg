@@ -1,5 +1,6 @@
 use base
 
+batch_size=15
 distortion_to_minimize = vgg
 num_chan_bn = 32
 H_target = 2*0.2  # == 64/C * bpp
