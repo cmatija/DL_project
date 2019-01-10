@@ -1,0 +1,7 @@
+use base
+
+distortion_to_minimize = vgg_ms_ssim
+num_chan_bn = 64
+H_target = 1.0  # == 64/C * bpp
+
+

@@ -1,0 +1,6 @@
+use base
+
+distortion_to_minimize = alexnet_ms_ssim
+num_chan_bn = 32
+H_target = 2*0.6  # == 64/C * bpp
+
