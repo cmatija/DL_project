@@ -46,13 +46,14 @@ def alexnet_v2_arg_scope(weight_decay=0.0005):
   with slim.arg_scope([slim.conv2d, slim.fully_connected],
                       activation_fn=tf.nn.relu,
                       weights_regularizer=slim.l2_regularizer(weight_decay)):
-    with slim.arg_scope([slim.conv2d], padding='SAME'):
-      with slim.arg_scope([slim.max_pool2d], padding='SAME') as arg_sc:
+    with slim.arg_scope([slim.conv2d], padding='VALID'):
+      with slim.arg_scope([slim.max_pool2d], padding='VALID') as arg_sc:
         return arg_sc
 
 
 def alexnet_v2(inputs,
                weights,
+               mode='net',
                num_classes=1000,
                is_training=True,
                dropout_keep_prob=0.5,
@@ -145,8 +146,9 @@ def alexnet_v2(inputs,
             net = slim.conv2d(net, 256, [3, 3], scope='conv5', weights_initializer=tf.constant_initializer(weights[8]),
                         biases_initializer= tf.constant_initializer(weights[9]), trainable=False)
             #     nn.MaxPool2d(kernel_size=3, stride=2),
-            net = slim.max_pool2d(net, [3, 3], 2, scope='pool5')
             ret5 = net
+            # net = slim.max_pool2d(net, [3, 3], 2, scope='pool5')
+
 
             # self.classifier = nn.Sequential(
             #     nn.Dropout(),
