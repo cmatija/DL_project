@@ -21,14 +21,15 @@ from os import path
 import skimage.measure
 from collections import defaultdict
 from collections import namedtuple
-
 from val_files import ValidationDirs, MeasuresWriter
 
 import bpp_helpers
 
-
+#own import
+from own_utils import prepare_imgs_for_lpips, get_img_patch_grid
+from model_translator import model_translator
 import sys
-sys.path.insert(0, '/home/cmatija/code/python/DL_project/lpips-tensorflow')
+sys.path.insert(0, '/home/cmatija/code/python/DL_project_github/lpips-tensorflow')
 import lpips_tf
 
 _VALIDATION_INFO_STR = """
@@ -133,18 +134,34 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
 
     # Note that for each checkpoint, the structure of the network will be the same. Thus the pad depending image
     # loading can be cached.
-    lpips_ph1 = tf.placeholder(tf.float32)
-    lpips_ph2 = tf.placeholder(tf.float32)
 
-    distance_t = lpips_tf.lpips(lpips_ph1, lpips_ph2, model='net-lin', net='alex')
-    distance_t = tf.Print(distance_t, [distance_t])
+    desired_img_shape = (512, 768)
+    #DEFINE LPIPS DIFF
+    lpips_ph1 = tf.placeholder(tf.float32, shape=[1, desired_img_shape[0], desired_img_shape[1], 3])
+    lpips_ph2 = tf.placeholder(tf.float32, shape=[1, desired_img_shape[0], desired_img_shape[1], 3])
+    network = 'alexnet'
+    mode = 'net-lin'
+    distance_t_orig = model_translator(lpips_ph1, lpips_ph2, network=network, mode=mode, scope_suffix='test',
+                                       datatype='NHWC', use_own=False).net
+    # distance_t_orig = tf.Print(distance_t_orig, [distance_t_orig], 'original distance: ')
+    distance_t_own = model_translator(lpips_ph1, lpips_ph2, network=network, mode=mode, scope_suffix='test',
+                                       datatype='NHWC', use_own=True).net
+    # distance_t_own = tf.Print(distance_t_own, [distance_t_own], 'own distance: ')
+    distance_t_diff = tf.abs(distance_t_own-distance_t_orig)
+    distance_t_diff = tf.Print(distance_t_diff, [distance_t_diff], 'DISTANCE DIFF: ')
+
+    #DEFINE OWN DIFF
+
+    # translator = model_translator(lpips_ph1, lpips_ph2,
+    #                               network=perceptual_network)
+    # distance_t_own = translator.net
     # create session
     with tf_helpers.create_session() as sess:
         if flags.real_bpp:
             pred = probclass.PredictionNetwork(pc, pc_config, ae.get_centers_variable(), sess)
             checker = probclass.ProbclassNetworkTesting(pc, ae, sess)
             bpp_fetcher = bpp_helpers.BppFetcher(pred, checker)
-
+        sess.run(tf.global_variables_initializer())
         fetcher = sess.make_callable(fetch_dict, feed_list=[x_val_ph])
 
         last_ckpt_itr = missing_checkpoints[-1][0]
@@ -162,29 +179,31 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
 
             # truncates the previous measures.csv file! This way, only the last valid checkpoint is saved.
             measures_writer = MeasuresWriter(val_dirs.out_dir)
-
-            # ----------------------------------------
-            # iterate over images
-            # images are padded to work with current auto encoder
-
+            diffs = []
             for img_i, (img_name, img_content) in enumerate(images_iterator.iter_imgs(pad=ae.get_subsampling_factor())):
 
+                if not img_content.shape[1:3] == desired_img_shape:
+                    img_content = np.transpose(img_content, [0, 2, 1])
 
                 otp = fetcher(img_content)
                 measures_writer.append(img_name, otp)
-                img_content_normalized = (img_content - np.min(img_content)) / (
-                            np.max(img_content) - np.min(img_content))
-                img_content_normalized = np.transpose(np.expand_dims(img_content_normalized, axis=0),
-                                                      [0, 2, 3, 1])
-                out_img_content_normalized = (otp['img_out'] - np.min(otp['img_out'])) / (
-                            np.max(otp['img_out']) - np.min(otp['img_out']))
-                #print(out_img_content_normalized.shape)
-                out_img_content_normalized = np.transpose(out_img_content_normalized,
-                                                      [0, 2, 3, 1])
 
-                sess.run(distance_t, feed_dict={lpips_ph1: img_content_normalized, lpips_ph2: out_img_content_normalized})
+                inp_img_content = np.reshape(img_content, [1] + list(img_content.shape))
+                otp_img_content = otp['img_out']
+                otp_img_content = np.reshape(otp_img_content, [1] + list(img_content.shape))
 
-
+                #
+                # sess.run(distance_t_orig, feed_dict={lpips_ph1:
+                #                                          np.transpose(inp_img_content, [0, 2, 3, 1]),
+                #                                      lpips_ph2: np.transpose(otp_img_content, [0, 2, 3, 1])})
+                # #
+                # sess.run(distance_t_own, feed_dict={lpips_ph1:
+                #                                          np.transpose(inp_img_content, [0, 2, 3, 1]),
+                #                                      lpips_ph2: np.transpose(otp_img_content, [0, 2, 3, 1])})
+                curr_diff  = sess.run(distance_t_diff, feed_dict={lpips_ph1:
+                                                         np.transpose(inp_img_content, [0, 2, 3, 1]),
+                                                     lpips_ph2: np.transpose(otp_img_content, [0, 2, 3, 1])})
+                diffs += [curr_diff]
 
                 if flags.real_bpp:
                     # Calculate
@@ -212,7 +231,6 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
                       end=('\r' if not flags.real_bpp else '\n'), flush=True)
 
             measures_writer.close()
-
             print()  # add newline
             avgs = values_aggregator.averages()
             avg_bpp, avg_ms_ssim, avg_psnr = avgs['bpp'], avgs['ms-ssim'], avgs['psnr']
@@ -236,7 +254,11 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
                     print(e)
 
             val_dirs.add_validated_checkpoint(ckpt_itr)
-
+            diff_shapes = [v.shape for v in diffs]
+            print(diff_shapes)
+            diff_mean = tf.reduce_mean(tf.stack(diffs))
+            diff_mean = tf.print(diff_mean, [diff_mean], 'MEAN DIFF: ')
+            sess.run(diff_mean)
     print('Validation completed {}'.format(val_dirs))
 
 
