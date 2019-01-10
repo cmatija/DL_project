@@ -142,6 +142,7 @@ vgg_a.default_image_size = 224
 
 def vgg_16(inputs,
            weights,
+           mode='net',
            num_classes=1000,
            is_training=True,
            dropout_keep_prob=0.5,
@@ -266,7 +267,6 @@ def vgg_16(inputs,
       # (30): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
       # )
       # net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv5', trainable=False)
-      rets.append(net)
       kernel_size = [3, 3]
       n_channels = 512
       net = slim.conv2d(net, n_channels, kernel_size, scope='conv5_1', trainable=False, weights_initializer=tf.constant_initializer(weights[20]),
