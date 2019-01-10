@@ -18,7 +18,7 @@ def main():
     parser.add_argument('--image_height', type=int, default=64)
     parser.add_argument('--image_width', type=int, default=64)
     args = parser.parse_args()
-    use_gpu = True
+    use_gpu = False
     if use_gpu:
         device = 'GPU'
     else:
