@@ -1,0 +1,9 @@
+use base
+
+batch_size=15
+K_perceptual=250
+distortion_to_minimize = vgg
+num_chan_bn = 64
+H_target = 1.0  # == 64/C * bpp
+
+

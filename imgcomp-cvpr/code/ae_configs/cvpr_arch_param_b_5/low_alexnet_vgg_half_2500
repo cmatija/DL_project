@@ -1,0 +1,10 @@
+use base
+
+distortion_to_minimize = alexnet_vgg
+K_perceptual = 2500
+K_ms_ssim = 2500
+batch_size = 15
+num_chan_bn = 32
+H_target = 2*0.2  # == 64/C * bpp
+
+
