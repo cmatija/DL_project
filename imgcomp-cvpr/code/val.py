@@ -18,7 +18,7 @@ from images_iterator import ImagesIterator
 from saver import Saver
 import os
 from os import path
-from os import listdir
+from own_utils import get_job_ids
 import skimage.measure
 from collections import defaultdict
 from collections import namedtuple
@@ -312,9 +312,7 @@ def ckpt_still_exists(ckpt_path):
     ckpt_files = glob.glob(ckpt_path + '*')
     return len(ckpt_files) > 0
 
-def get_job_ids(logdir_root):
-    dirs = [f for f in listdir(logdir_root) if '@' in f]
-    return ",".join([d.split()[0] for d in dirs])
+
 
 def main():
     p = argparse.ArgumentParser()

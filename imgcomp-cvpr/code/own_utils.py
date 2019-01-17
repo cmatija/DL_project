@@ -1,6 +1,11 @@
 import tensorflow as tf
 import numpy as np
+from os import path
+from os import listdir
 
+def get_job_ids(logdir_root):
+    dirs = [f for f in listdir(logdir_root) if '@' in f]
+    return ",".join([d.split()[0] for d in dirs])
 
 def get_img_patch_grid(imgs, ksizes, strides, rates, padding):
     #inputs

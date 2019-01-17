@@ -14,6 +14,8 @@ import constants
 from codec_distance import get_interpolated_values_bpg_jp2k, get_measures_readers, interpolate_ours, \
     DEFAULT_BPP_GRID, CODECS
 
+from own_utils import get_job_ids
+
 
 LABEL_OURS = 'Ours'
 LABEL_RB = 'Rippel \& Bourdev'
@@ -105,7 +107,7 @@ def plot_ours_mean(measures_readers, metric, color, show_ids):
                     label='Ours' if first else None)
     for (bpp, value), job_id in zip(sorted(ops), show_ids):
         plt.annotate(job_id, (bpp + 0.04, value),
-                     horizontalalignment='bottom', verticalalignment='center')
+                     horizontalalignment='right', verticalalignment='bottom')
 
 
 def interpolated_curve(log_dir_root, job_ids, dataset,
@@ -223,6 +225,8 @@ def main():
                    nargs='+')
     flags = p.parse_args()
 
+    if flags.job_ids=='use_all':
+        flags.job_ids = get_job_ids(flags.log_dir_root)
     range_to_floats = lambda r: tuple(map(float, r.split(',')))
     interpolated_curve(flags.log_dir_root, flags.job_ids, flags.images,
                        DEFAULT_BPP_GRID, 'quadratic',
