@@ -18,6 +18,7 @@ from images_iterator import ImagesIterator
 from saver import Saver
 import os
 from os import path
+from os import listdir
 import skimage.measure
 from collections import defaultdict
 from collections import namedtuple
@@ -29,7 +30,7 @@ import bpp_helpers
 from own_utils import prepare_imgs_for_lpips, get_img_patch_grid
 from model_translator import model_translator
 import sys
-sys.path.insert(0, '/home/cmatija/code/python/DL_project_github/lpips-tensorflow')
+sys.path.insert(0, '/../../python/DL_project_github/lpips-tensorflow')
 import lpips_tf
 
 _VALIDATION_INFO_STR = """
@@ -140,7 +141,7 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
     lpips_ph1 = tf.placeholder(tf.float32, shape=[1, desired_img_shape[0], desired_img_shape[1], 3])
     lpips_ph2 = tf.placeholder(tf.float32, shape=[1, desired_img_shape[0], desired_img_shape[1], 3])
     network = 'alexnet'
-    mode = 'net-lin'
+    mode = 'net'
     distance_t_orig = model_translator(lpips_ph1, lpips_ph2, network=network, mode=mode, scope_suffix='test',
                                        datatype='NHWC', use_own=False).net
     # distance_t_orig = tf.Print(distance_t_orig, [distance_t_orig], 'original distance: ')
@@ -311,6 +312,9 @@ def ckpt_still_exists(ckpt_path):
     ckpt_files = glob.glob(ckpt_path + '*')
     return len(ckpt_files) > 0
 
+def get_job_ids(logdir_root):
+    dirs = [f for f in listdir(logdir_root) if '@' in f]
+    return ",".join([d.split()[0] for d in dirs])
 
 def main():
     p = argparse.ArgumentParser()
@@ -330,8 +334,12 @@ def main():
                    help='If given, calculate real bpp using arithmetic encoding. Note: in our experiments, '
                         'this matches the theoretical bpp up to 1% precision. Note: this is very slow.')
 
+
+
     flags, unknown_flags = p.parse_known_args()
 
+    if  flags.job_ids == 'use_all':
+            flags.job_ids = get_job_ids(flags.log_dir_root)
     if unknown_flags:
         print('Unknown flags: {}'.format(unknown_flags))
 
