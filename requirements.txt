@@ -1,0 +1,26 @@
+imageio==2.4.1
+matplotlib==3.0.2
+numpy==1.15.4
+Pillow==5.4.1
+scikit-image==0.14.2
+scikit-learn==0.20.2
+scipy==1.2.0
+sklearn==0.0
+#tensorflow-gpu==1.4.1
+#tensorflow-tensorboard==0.4.0rc3
+fasteners==0.14.1
+fjcommon==0.1.69
+httplib2==0.12.0
+apiclient==1.0.3
+google-api-python-client==1.7.7
+oauth2client==4.1.3
+tensorflow-gpu==1.12.0
+tensorflow-tensorboard
+#for lpips stuff
+iPython==7.2.0
+torch==1.0.0
+torchvision==0.2.1
+onnx==1.3.0
+onnx-tf==1.2.1
+six==1.12.0
+opencv-python==4.0.0.21
