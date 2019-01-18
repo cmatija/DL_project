@@ -26,10 +26,6 @@ import sheets_logger
 import numpy as np
 from codec_distance import CodecDistance, CodecDistanceReadException
 from model_translator import model_translator
-import string
-import sys
-sys.path.insert(0, '/home/cmatija/code/python/DL_project_github/lpips-tensorflow')
-import lpips_tf
 
 # Enable TF logging output
 tf.logging.set_verbosity(tf.logging.INFO)
@@ -158,6 +154,8 @@ def train(autoencoder_config_path, probclass_config_path,
         tf.summary.scalar('train/AE_loss/{}'.format(name), comp) for name, comp in ae_comps])
     train_logger.add_summaries([tf.summary.scalar('train/bpp', bpp_train)])
     train_logger.add_console_tensor('loss={:.3f}', total_loss)
+    if d_train.perceptual is not None:
+        train_logger.add_console_tensor('perceptual_train={:.3f}', d_train.perceptual)
 
     if d_train.ms_ssim is not None:
          train_logger.add_console_tensor('ms_ssim={:.3f}', d_train.ms_ssim)
@@ -176,6 +174,8 @@ def train(autoencoder_config_path, probclass_config_path,
 
     if d_test.ms_ssim is not None:
         test_logger.add_console_tensor('ms_ssim={:.3f}', d_test.ms_ssim)
+    if d_test.perceptual is not None:
+        train_logger.add_console_tensor('perceptual_test={:.3f}', d_test.perceptual)
     test_logger.add_console_tensor('bpp={:.3f}', bpp_test)
     test_logger.add_summaries([
         tf.summary.histogram('centers', ae.get_centers_variable()),
@@ -363,11 +363,11 @@ class Distortions(object):
 
         with tf.name_scope('distortions_train' if is_training else 'distortions_test'):
             minimize_for = config.distortion_to_minimize
-            #OUR MODIFICATION
-            assert minimize_for in ('mse', 'psnr', 'ms_ssim', 'alexnet', 'vgg', 'alex_vgg', 'alex', 'alexnet_vgg')
+            #OUR CODE
+            # assert minimize_for in ('mse', 'psnr', 'ms_ssim', 'alexnet', 'vgg', 'alex_vgg', 'alex', 'alexnet_vgg')
             # don't calculate MS-SSIM if not necessary to speed things up
-            should_get_ms_ssim = minimize_for == 'ms_ssim'
-            #OUR MODIFICATION
+            should_get_ms_ssim = ('ms_ssim' in minimize_for)
+            #OUR CODE
             should_get_alexnet = ('alex' in minimize_for)
             should_get_vgg = ('vgg' in minimize_for)
             # if we don't minimize for PSNR, cast x and x_out to int before calculating the PSNR, because otherwise
@@ -382,13 +382,11 @@ class Distortions(object):
             self.ms_ssim = (
                 Distortions.get_ms_ssim(x, x_out)
                 if should_get_ms_ssim else None)
-            #OUR MODIFICATION
+            #OUR CODE
             self.perceptual = None
             self.perceptual = (Distortions.get_perceptual(x, x_out, is_training, net=minimize_for)
                             if should_get_alexnet or should_get_vgg  else None)
 
-            # self.alexnet_vgg = (Distortions.get_alexnet_vgg(x, x_out, sess=self.sess)
-            #             if should_get_vgg and should_get_alexnet else None)
             with tf.name_scope('distortion_to_minimize'):
                 self.d_loss_scaled = self._get_distortion_to_minimize(minimize_for)
 
@@ -406,6 +404,7 @@ class Distortions(object):
     def _get_distortion_to_minimize(self, minimize_for):
         """ Returns a float32 that should be minimized in training. For PSNR and MS-SSIM, which increase for a
         decrease in distortion, a suitable factor is added. """
+        possible_perceptual_losses = ['alexnet', 'vgg', 'alexnet_vgg']
         if minimize_for == 'mse':
             return self.mse
         if minimize_for == 'psnr':
@@ -413,8 +412,10 @@ class Distortions(object):
         if minimize_for == 'ms_ssim':
             return self.config.K_ms_ssim * (1 - self.ms_ssim)
         #OUR MODIFICATION
-        if minimize_for in ['alexnet', 'vgg', 'alexnet_vgg']:
+        if minimize_for in possible_perceptual_losses:
             return self.config.K_perceptual * self.perceptual
+        if ('alex' in minimize_for or 'vgg' in minimize_for) and 'ms_ssim' in minimize_for:
+            return 0.5 * self.config.K_perceptual * self.perceptual + 0.5 * self.config.K_ms_ssim * self.ms_ssim
         raise ValueError('Invalid: {}'.format(minimize_for))
 
     @staticmethod
