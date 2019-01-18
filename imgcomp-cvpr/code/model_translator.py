@@ -5,8 +5,9 @@ import numpy as np
 import vgg
 from own_utils import prepare_imgs_for_lpips, get_img_patch_grid
 import sys
-
-sys.path.insert(0, '/home/cmatija/code/python/DL_project_github/lpips-tensorflow')
+#OUR CODE
+#handles the translation from LPIPS/PyTorch models to TF models that can also be used for backprop
+sys.path.insert(0, '../../lpips-tensorflow')
 import lpips_tf
 class model_translator:
 
@@ -14,7 +15,7 @@ class model_translator:
         self.slim = tf.contrib.slim
         self.network = network
         self.mode = mode
-        #directly taken from torch script
+        #directly taken from LPIPS torch script; they do this to all inputs to their networks
         self.shift = tf.reshape(tf.constant([-.030, -.088, -.188]), [1, 1, 1, 3])
         self.scale = tf.reshape(tf.constant([.458, .448, .450]), [1, 1, 1, 3])
 
@@ -22,6 +23,7 @@ class model_translator:
         self.weights_original = {}
 
         losses = []
+        #Normalize all color channels to range -1,1
         inp_normalized = prepare_imgs_for_lpips(input1, None, datatype=datatype)
         otp_normalized = prepare_imgs_for_lpips(input2, None, datatype=datatype)
         ksizes = [1, 64, 64, 1]
@@ -65,7 +67,7 @@ class model_translator:
 
         for possible_network in possible_networks:
             if possible_network in self.network:
-                fpath = '/home/cmatija/code/python/DL_project_github/models/' + possible_network + '_'+self.mode +\
+                fpath = '../../models/' + possible_network + '_'+self.mode +\
                         '.pickle'
                 pickle_in = open(fpath, "rb")
                 self.weights_original[possible_network] = pickle.load(pickle_in)
