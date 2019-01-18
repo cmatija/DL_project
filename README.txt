@@ -45,9 +45,9 @@ CONFIG FILE EXPLANATION:
 	
 	-low, med, hi are baseline configs used by Mentzer et al. We didn't use those, instead, we directly worked with the checkpoints they provided (see step 4.1)
 	- e.g. hi_alexnet, hi_alexnet_500, hi_alexnet250 correspond to configurations using AlexNet for the loss, using weights (1000, 500, 250), respectively
-		(the base value used in hi_alexnet is stored in  [project_folder]/imgcomp-cvpr/code/ae_configs/cvpr_arch_param_b_5/base
+		(the base value used in hi_alexnet is stored in  [project_folder]/imgcomp-cvpr/code/ae_configs/cvpr_arch_param_b_5/base. look for K_perceptual
 		
-	- for mixed configs (e.g. med_alexnet_vgg_125) corresponds to a c_loss of 2*125=250 (i.e. computing loss using alexnet and vgg using c_loss=250, and then taking the mean of those 2 values)
+	- for mixed configs (e.g. med_alexnet_vgg_125), the 125 corresponds to a c_loss of 2*125=250 (i.e. computing loss using alexnet and vgg using c_loss=250, and then taking the mean of those 2 values)
 		--> in the implementation, we just add the two losses (from alexnet and vgg), but use a weight of c_loss/2, hence the weight in the config file name is always half of the c_loss config
 		as described in the paper
 		
