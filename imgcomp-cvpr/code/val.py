@@ -136,7 +136,7 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
     #DEFINE LPIPS DIFF
     lpips_ph1 = tf.placeholder(tf.float32, shape=[1, desired_img_shape[0], desired_img_shape[1], 3])
     lpips_ph2 = tf.placeholder(tf.float32, shape=[1, desired_img_shape[0], desired_img_shape[1], 3])
-    network = 'alexnet'
+    network = 'vgg'
     mode = 'net'
     distance_t_orig = model_translator(lpips_ph1, lpips_ph2, network=network, mode=mode, scope_suffix='test',
                                        datatype='NHWC', use_own=False).net
@@ -145,7 +145,7 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
                                        datatype='NHWC', use_own=True).net
     # distance_t_own = tf.Print(distance_t_own, [distance_t_own], 'own distance: ')
     distance_t_diff = tf.abs(distance_t_own-distance_t_orig)
-    distance_t_diff = tf.Print(distance_t_diff, [distance_t_diff], 'DISTANCE DIFF: ')
+    distance_t_diff = tf.Print(distance_t_diff, [distance_t_diff], 'DISTANCE DIFF: ') #node to print the diff between using own LPIPS-implementation and the original one
 
     with tf_helpers.create_session() as sess:
         if flags.real_bpp:
