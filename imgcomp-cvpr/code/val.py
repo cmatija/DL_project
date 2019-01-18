@@ -30,8 +30,7 @@ import bpp_helpers
 from own_utils import prepare_imgs_for_lpips, get_img_patch_grid
 from model_translator import model_translator
 import sys
-sys.path.insert(0, '/../../python/DL_project_github/lpips-tensorflow')
-import lpips_tf
+
 
 _VALIDATION_INFO_STR = """
 - VALIDATION -------------------------------------------------------------------"""
@@ -87,14 +86,10 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
     x_val_ph = tf.placeholder(tf.uint8, (3, None, None), name='x_val_ph')
     x_val_uint8 = tf.expand_dims(x_val_ph, 0, name='batch')
     x_val = tf.to_float(x_val_uint8, name='x_val')
-    x_val_normalized = tf.div(tf.subtract(x_val, tf.reduce_min(x_val)),
-                              tf.subtract(tf.reduce_max(x_val), tf.reduce_min(x_val)))
 
 
     enc_out_val = ae.encode(x_val, is_training=False)
     x_out_val = ae.decode(enc_out_val.qhard, is_training=False)
-    x_out_val_normalized = tf.div(tf.subtract(x_out_val, tf.reduce_min(x_out_val)),
-                              tf.subtract(tf.reduce_max(x_out_val), tf.reduce_min(x_out_val)))
     bc_val = pc.bitcost(enc_out_val.qbar, enc_out_val.symbols, is_training=False, pad_value=pc.auto_pad_value(ae))
     bpp_val = bits.bitcost_to_bpp(bc_val, x_val)
 
@@ -136,6 +131,7 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
     # Note that for each checkpoint, the structure of the network will be the same. Thus the pad depending image
     # loading can be cached.
 
+    #OUR CODE
     desired_img_shape = (512, 768)
     #DEFINE LPIPS DIFF
     lpips_ph1 = tf.placeholder(tf.float32, shape=[1, desired_img_shape[0], desired_img_shape[1], 3])
@@ -151,12 +147,6 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
     distance_t_diff = tf.abs(distance_t_own-distance_t_orig)
     distance_t_diff = tf.Print(distance_t_diff, [distance_t_diff], 'DISTANCE DIFF: ')
 
-    #DEFINE OWN DIFF
-
-    # translator = model_translator(lpips_ph1, lpips_ph2,
-    #                               network=perceptual_network)
-    # distance_t_own = translator.net
-    # create session
     with tf_helpers.create_session() as sess:
         if flags.real_bpp:
             pred = probclass.PredictionNetwork(pc, pc_config, ae.get_centers_variable(), sess)
@@ -183,29 +173,20 @@ def validate(val_dirs: ValidationDirs, images_iterator: ImagesIterator, flags: O
             diffs = []
             for img_i, (img_name, img_content) in enumerate(images_iterator.iter_imgs(pad=ae.get_subsampling_factor())):
 
+                #OUR CODE: all imgs in kodak have same dimension, but can be transposed. here we ensure they all have same format
                 if not img_content.shape[1:3] == desired_img_shape:
                     img_content = np.transpose(img_content, [0, 2, 1])
 
                 otp = fetcher(img_content)
                 measures_writer.append(img_name, otp)
-
+                # OUR CODE
                 inp_img_content = np.reshape(img_content, [1] + list(img_content.shape))
                 otp_img_content = otp['img_out']
                 otp_img_content = np.reshape(otp_img_content, [1] + list(img_content.shape))
-
-                #
-                # sess.run(distance_t_orig, feed_dict={lpips_ph1:
-                #                                          np.transpose(inp_img_content, [0, 2, 3, 1]),
-                #                                      lpips_ph2: np.transpose(otp_img_content, [0, 2, 3, 1])})
-                # #
-                # sess.run(distance_t_own, feed_dict={lpips_ph1:
-                #                                          np.transpose(inp_img_content, [0, 2, 3, 1]),
-                #                                      lpips_ph2: np.transpose(otp_img_content, [0, 2, 3, 1])})
                 curr_diff  = sess.run(distance_t_diff, feed_dict={lpips_ph1:
                                                          np.transpose(inp_img_content, [0, 2, 3, 1]),
                                                      lpips_ph2: np.transpose(otp_img_content, [0, 2, 3, 1])})
                 diffs += [curr_diff]
-
                 if flags.real_bpp:
                     # Calculate
                     bpp_real, bpp_theory = bpp_fetcher.get_bpp(
@@ -324,7 +305,7 @@ def main():
     p.add_argument('--how_many', type=int, help='Number of images to output')
     p.add_argument('--image_cache_max', '-cache', type=int, default=500, help='Cache max in [MB]. Set to 0 to disable.')
     p.add_argument('--restore_itr', '-i', type=int)
-    p.add_argument('--ckpt_step', '-s', type=int, default=2,
+    p.add_argument('--ckpt_step', '-s', type=int, default=-1,
                    help='Every CKPT_STEP-th checkpoint will be validated. Set to 1 to validate all of them. '
                         'Last checkpoint will always be validated. Set to -1 to only validate last.')
     p.add_argument('--reset', action='store_const', const=True, help='Remove previous output')
