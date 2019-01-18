@@ -54,6 +54,8 @@ def lpips(input0, input1, model='net-lin', net='alex', version=0.1,  data_format
     # permutation = [0, 1, 2, 3]
     input0 = tf.transpose(input0, permutation)
     input1 = tf.transpose(input1, permutation)
+
+    #our code: REMOVED THESE 3 lines, as this is already performed to the input prior to calling this lpips method
     # normalize to [-1, 1]
     # input0 = input0 * 2.0 - 1.0
     # input1 = input1 * 2.0 - 1.0
@@ -63,7 +65,8 @@ def lpips(input0, input1, model='net-lin', net='alex', version=0.1,  data_format
     default_graph = tf.get_default_graph()
     producer_version = default_graph.graph_def_versions.producer
 
-    cache_dir = os.path.expanduser('~/code/python/DL_project_github/models')
+    #our code: MODIFIED so that downloads model into correct dir
+    cache_dir = os.path.expanduser('../../models')
     print('loading lpips model from ' + cache_dir)
     os.makedirs(cache_dir, exist_ok=True)
     # files to try. try a specific producer version, but fallback to the version-less version (latest).
@@ -90,6 +93,7 @@ def lpips(input0, input1, model='net-lin', net='alex', version=0.1,  data_format
 
     if distance.shape.ndims == 4:
         distance = tf.squeeze(distance, axis=[-3, -2, -1])
+    #our code: removed below line, as it only works for batch size 1. + it is unnecessary
     # reshape the leading dimensions
     # distance = tf.reshape(distance, batch_shape)
     return distance
