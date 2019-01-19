@@ -8,7 +8,7 @@ DATA PREPARATION:
 ENVIRONMENT PREPARATION:
 	suggested procedure: use conda
 	
-	0. Collect project into [project_folder], containting [project_folder]/imgcomp-cvpr and [project_folder]/lpips-tensorflow
+	0. Collect project into [project_folder], containing [project_folder]/imgcomp-cvpr and [project_folder]/lpips-tensorflow
 	
 	1. create conda environment using python==3.6.7, and activate that environment
 
@@ -27,14 +27,14 @@ RUNNING INSTRUCTIONS
 			--> goes through all the configs in [ckpts] and evaluates the LAST stored checkpoint for each config (generated during training), 
 			stores compressed images within [ckpts] and outputs evaluation metrics for each image.
 			--> while running that, LPIPS-code downloads a .pb file into [project_folder]/models which contains weights used by lpips_tensorflow directly.
-				The networ that it downloads is specified in val.py by means of the variable 'network' (can be either 'vgg' or 'alexnet'
+				The network that it downloads is specified in val.py by means of the variable 'network' (can be either 'vgg' or 'alexnet')
 			(used to compare distances as computed by our network implementations and the original LPIPS ones)
 			
 	5. If step 4 worked, training will also work as follows:
 	
 		- run export RECORDS_ROOT=[data]/records in terminal
 		- choose a directory to store log-data of the training procedure. Hereinafter, we denote it as [logdir]
-		- run: python train.py [project_folder]/imgcomp-cvpr/code/ae_configs/cvpr_arch_param_b_5/hi_alexnet_vgg_half_250 [project_folder]/imgcomp-cvpr/code/pc_configs/cvpr/res_shallow --dataset_train imgnet_train --dataset_test imgnet_test --log_dir_root [logdir
+		- run: python train.py [project_folder]/imgcomp-cvpr/code/ae_configs/cvpr_arch_param_b_5/hi_alexnet_vgg_half_250 [project_folder]/imgcomp-cvpr/code/pc_configs/cvpr/res_shallow --dataset_train imgnet_train --dataset_test imgnet_test --log_dir_root [logdir]
 		
 		--> this uses the example config file hi_alexnet_vgg_half_250, corresponding to the config denoted as alexnet\_vgg_{250, high} in our report.
 		
@@ -52,3 +52,6 @@ CONFIG FILE EXPLANATION:
 		as described in the paper
 		
 	- note: all config files we used (low_*, med_*, hi_*) were generated using the baseline files low, med, hi
+	
+	
+Note that most of the code in this project is not our own. Where we have made modifications, we have added a comment #OUR CODE
