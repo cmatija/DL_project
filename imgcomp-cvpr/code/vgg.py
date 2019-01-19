@@ -180,6 +180,9 @@ def vgg_16(inputs,
       or the input to the logits layer (if num_classes is 0 or None).
     end_points: a dict of tensors with intermediate activations.
   """
+
+  # OUR CODE: modified the stuff below to conform to the Torch-implementation used in LPIPS.
+  # originally from https://github.com/tensorflow/models
   with tf.variable_scope(scope, 'vgg_16', [inputs]) as sc:
     # 'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     end_points_collection = sc.original_name_scope + '_end_points'
